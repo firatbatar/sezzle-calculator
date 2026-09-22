@@ -140,8 +140,37 @@ function applyPress(stack: Press[], press: Press): Press[] {
     }
 }
 
+function validateExpression(stack: Press[]): boolean {
+    if (stack.length == 0) {
+        return false;
+    }
+ 
+    let openParenthesesCount = 0;
+    for (const p of stack) {
+        if (p.value.endsWith("(")) openParenthesesCount++;
+        else if (p.value.endsWith(")")) openParenthesesCount--;
+ 
+        if (openParenthesesCount < 0) {
+            return false;
+        }
+    }
+    if (openParenthesesCount != 0) {
+        return false;
+    }
+ 
+    const lastPress = stack[stack.length - 1];
+    return (
+        lastPress.type == PressType.Number ||
+        lastPress.type == PressType.DecimalDot ||
+        lastPress.type == PressType.CloseParenthesis ||
+        lastPress.type == PressType.InitialZero
+    );
+}
+
+
 export default function CalculatorBody() {
     const [pressStack, setPressStack] = React.useState<Press[]>([{ value: "0", type: PressType.InitialZero }]);
+    const [invalidCount, setInvalidCount] = React.useState(0);
 
     const text = pressStack.map(press => press.value).join("");
     
@@ -157,14 +186,22 @@ export default function CalculatorBody() {
         setPressStack(prev => prev.slice(0, -1));
     }
 
+    const evaluate = () => {
+        if (validateExpression(pressStack)) {
+            // An expression string will be formed and send to backend for complete evaluation.
+        } else {
+            setInvalidCount(count => count + 1);
+        }
+    }
+
     return (
         <div className="flex flex-1 w-full grid grid-cols-5 grid-rows-7 bg-gray">
             <div className="flex col-span-5 row-span-2">
                 {/* Screen */}
-                <CalculatorScreen text={text} />
+                <CalculatorScreen text={text} invalidCount={invalidCount} />
             </div>
 
-                        {/* Row 1 */}
+            {/* Row 1 */}
             <CalculatorButton displayText="(" press={{ value: "(", type: PressType.OpenParenthesis }} buttonClick={buttonPress} />
             <CalculatorButton displayText=")" press={{ value: ")", type: PressType.CloseParenthesis }} buttonClick={buttonPress} />
             <CalculatorButton displayText="C" press={{ value: "C", type: PressType.None }} buttonClick={allClear} />
@@ -195,8 +232,7 @@ export default function CalculatorBody() {
             <CalculatorButton displayText="." press={{ value: ".", type: PressType.DecimalDot }} buttonClick={buttonPress} />
             <CalculatorButton displayText="0" press={{ value: "0", type: PressType.Number }} buttonClick={buttonPress} />
             <CalculatorButton displayText="%" press={{ value: " % ", type: PressType.Operation }} buttonClick={buttonPress} />
-            <CalculatorButton displayText="=" press={{ value: "=", type: PressType.None }} buttonClick={() => {}} classNames="col-span-2" />
-
+            <CalculatorButton displayText="=" press={{ value: "=", type: PressType.None }} buttonClick={() => {evaluate()}} classNames="col-span-2" />
         </div>
     );
 }

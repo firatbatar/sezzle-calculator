@@ -24,3 +24,18 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@theme {
+  --animate-shake: shake 0.6s ease-in-out;
+  --animate-flash-red: flash-red 0.6s ease-in-out;
+
+  @keyframes shake {
+    0%, 100% { color: #dc2626; transform: translateX(0); }
+    15%, 45%, 75% { color: #dc2626; transform: translateX(-6px); }
+    30%, 60%, 90% { color: #dc2626; transform: translateX(6px); }
+  }
+
+  @keyframes flash-red {
+    0%, 100% { color: #dc2626; }
+  }
+}
