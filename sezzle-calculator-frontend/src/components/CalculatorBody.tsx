@@ -3,6 +3,8 @@
 import React from "react";
 import CalculatorButton from "./CalculatorButton";
 import CalculatorScreen from "./CalculatorScreen";
+import { calculatorConfig } from "@/config/calculator";
+import { evaluateExpression } from "@/lib/calculatorApi";
 
 enum PressType {
     Number,
@@ -11,6 +13,7 @@ enum PressType {
     CloseParenthesis,
     DecimalDot,
     InitialZero,
+    Result,
     None,
 }
 
@@ -19,6 +22,22 @@ export type Press = { value: string, type: PressType };
 function applyPress(stack: Press[], press: Press): Press[] {
     const lastPress = stack[stack.length - 1];
     const multiply: Press = { value: "*", type: PressType.Operation };
+
+    if (lastPress?.type == PressType.Result) {
+        if (press.type == PressType.Operation && press.value != "sqrt(") {
+            // Continue using the result
+            // Wrap a negative result in parentheses
+            const result: Press = lastPress.value.startsWith("-") ? { value: `(${lastPress.value})`, type: PressType.Result } : lastPress;
+            return [...stack.slice(0, -1), result, press];
+        }
+
+        if (press.type == PressType.CloseParenthesis) {
+            return stack;
+        }
+
+        // Any other input clears the result and starts a new expression,
+        return applyPress([{ value: "0", type: PressType.InitialZero }], press);
+    }
  
     switch (press.type) {
         case PressType.Number: {
@@ -89,7 +108,7 @@ function applyPress(stack: Press[], press: Press): Press[] {
             let openParenthesesCount = 0;
             for (const p of stack) {
                 if (p.value.endsWith("(")) openParenthesesCount++;
-                else if (p.value.endsWith(")")) openParenthesesCount--;
+                else if (p.type == PressType.CloseParenthesis) openParenthesesCount--;
             }
             if (openParenthesesCount == 0) {
                 return stack;
@@ -148,7 +167,7 @@ function validateExpression(stack: Press[]): boolean {
     let openParenthesesCount = 0;
     for (const p of stack) {
         if (p.value.endsWith("(")) openParenthesesCount++;
-        else if (p.value.endsWith(")")) openParenthesesCount--;
+        else if (p.type == PressType.CloseParenthesis) openParenthesesCount--;
  
         if (openParenthesesCount < 0) {
             return false;
@@ -163,34 +182,95 @@ function validateExpression(stack: Press[]): boolean {
         lastPress.type == PressType.Number ||
         lastPress.type == PressType.DecimalDot ||
         lastPress.type == PressType.CloseParenthesis ||
-        lastPress.type == PressType.InitialZero
+        lastPress.type == PressType.InitialZero ||
+        lastPress.type == PressType.Result
     );
 }
-
 
 export default function CalculatorBody() {
     const [pressStack, setPressStack] = React.useState<Press[]>([{ value: "0", type: PressType.InitialZero }]);
     const [invalidCount, setInvalidCount] = React.useState(0);
 
+    const [evaluatedExpression, setEvaluatedExpression] = React.useState<string | null>(null);
+
+    // A backend error message
+    const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+    const [isEvaluating, setIsEvaluating] = React.useState(false);
+
+    const evaluatingRef = React.useRef(false);
+    const errorTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const text = pressStack.map(press => press.value).join("");
-    
+
+    const clearErrorMessage = () => {
+        if (errorTimerRef.current !== null) {
+            clearTimeout(errorTimerRef.current);
+            errorTimerRef.current = null;
+        }
+        setErrorMessage(null);
+    }
+
+    const showErrorMessage = (message: string) => {
+        clearErrorMessage();
+        setErrorMessage(message);
+        setInvalidCount(count => count + 1);
+        errorTimerRef.current = setTimeout(() => {
+            errorTimerRef.current = null;
+            setErrorMessage(null);
+        }, calculatorConfig.errorDisplayMs);
+    }
+
     const buttonPress = (press: Press) => {
+        if (evaluatingRef.current) return;
+        clearErrorMessage();
+        setEvaluatedExpression(null);
         setPressStack(prev => applyPress(prev, press));
     }
 
     const allClear = () => {
+        if (evaluatingRef.current) return;
+        clearErrorMessage();
+        setEvaluatedExpression(null);
         setPressStack([{ value: "0", type: PressType.InitialZero }]);
     }
 
     const deleteButton = () => {
+        if (evaluatingRef.current) return;
+        clearErrorMessage();
+        setEvaluatedExpression(null);
+
+        if (pressStack[pressStack.length - 1]?.type == PressType.Result) {
+            setPressStack([{ value: "0", type: PressType.InitialZero }]);
+            return;
+        }
+
         setPressStack(prev => prev.slice(0, -1));
     }
 
-    const evaluate = () => {
-        if (validateExpression(pressStack)) {
-            // An expression string will be formed and send to backend for complete evaluation.
-        } else {
+    const evaluate = async () => {
+        if (evaluatingRef.current) return;
+        clearErrorMessage();
+        setEvaluatedExpression(null);
+
+        if (!validateExpression(pressStack)) {
             setInvalidCount(count => count + 1);
+            return;
+        }
+
+        // Parse differently if needed
+        const expression = text;
+
+        evaluatingRef.current = true;
+        setIsEvaluating(true);
+        const response = await evaluateExpression(expression);
+        evaluatingRef.current = false;
+        setIsEvaluating(false);
+
+        if (response.ok) {
+            setEvaluatedExpression(`${expression} =`);
+            setPressStack([{ value: response.value, type: PressType.Result }]);
+        } else {
+            showErrorMessage(response.value);
         }
     }
 
@@ -198,7 +278,13 @@ export default function CalculatorBody() {
         <div className="flex flex-1 w-full grid grid-cols-5 grid-rows-7 bg-gray">
             <div className="flex col-span-5 row-span-2">
                 {/* Screen */}
-                <CalculatorScreen text={text} invalidCount={invalidCount} />
+                <CalculatorScreen
+                    text={text}
+                    evaluatedExpression={evaluatedExpression}
+                    error={errorMessage}
+                    invalidCount={invalidCount}
+                    isEvaluating={isEvaluating}
+                />
             </div>
 
             {/* Row 1 */}
