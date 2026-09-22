@@ -3,6 +3,7 @@
 import React from "react";
 import CalculatorButton from "./CalculatorButton";
 import CalculatorScreen from "./CalculatorScreen";
+import { DeleteIcon, SquareRootIcon } from "./icons";
 import { calculatorConfig } from "@/config/calculator";
 import { evaluateExpression } from "@/lib/calculatorApi";
 
@@ -275,8 +276,8 @@ export default function CalculatorBody() {
     }
 
     return (
-        <div className="flex flex-1 w-full grid grid-cols-5 grid-rows-7 bg-gray">
-            <div className="flex col-span-5 row-span-2">
+        <div className="grid w-full max-w-md sm:max-w-lg grid-cols-5 grid-rows-7 gap-2 sm:gap-3 rounded-2xl bg-stone-200 p-3 sm:p-5 font-sans shadow-lg shadow-stone-900/10 ring-1 ring-stone-400/40">
+            <div className="flex col-span-5 row-span-2 min-w-0">
                 {/* Screen */}
                 <CalculatorScreen
                     text={text}
@@ -288,37 +289,37 @@ export default function CalculatorBody() {
             </div>
 
             {/* Row 1 */}
-            <CalculatorButton displayText="(" press={{ value: "(", type: PressType.OpenParenthesis }} buttonClick={buttonPress} />
-            <CalculatorButton displayText=")" press={{ value: ")", type: PressType.CloseParenthesis }} buttonClick={buttonPress} />
-            <CalculatorButton displayText="C" press={{ value: "C", type: PressType.None }} buttonClick={allClear} />
-            <CalculatorButton displayText="<-" press={{ value: "<-", type: PressType.None }} buttonClick={deleteButton} classNames="col-span-2" />
+            <CalculatorButton displayText="(" press={{ value: "(", type: PressType.OpenParenthesis }} buttonClick={buttonPress} variant="function" />
+            <CalculatorButton displayText=")" press={{ value: ")", type: PressType.CloseParenthesis }} buttonClick={buttonPress} variant="function" />
+            <CalculatorButton displayText="C" press={{ value: "C", type: PressType.None }} buttonClick={allClear} variant="function" />
+            <CalculatorButton displayText={<DeleteIcon />} ariaLabel="Delete" press={{ value: "<-", type: PressType.None }} buttonClick={deleteButton} classNames="col-span-2" variant="function" />
  
             {/* Row 2 */}
             <CalculatorButton displayText="7" press={{ value: "7", type: PressType.Number }} buttonClick={buttonPress} />
             <CalculatorButton displayText="8" press={{ value: "8", type: PressType.Number }} buttonClick={buttonPress} />
             <CalculatorButton displayText="9" press={{ value: "9", type: PressType.Number }} buttonClick={buttonPress} />
-            <CalculatorButton displayText="+" press={{ value: " + ", type: PressType.Operation }} buttonClick={buttonPress} />
-            <CalculatorButton displayText="-" press={{ value: " - ", type: PressType.Operation }} buttonClick={buttonPress} />
+            <CalculatorButton displayText="+" press={{ value: " + ", type: PressType.Operation }} buttonClick={buttonPress} variant="operator" />
+            <CalculatorButton displayText="-" press={{ value: " - ", type: PressType.Operation }} buttonClick={buttonPress} variant="operator" />
  
             {/* Row 3 */}
             <CalculatorButton displayText="4" press={{ value: "4", type: PressType.Number }} buttonClick={buttonPress} />
             <CalculatorButton displayText="5" press={{ value: "5", type: PressType.Number }} buttonClick={buttonPress} />
             <CalculatorButton displayText="6" press={{ value: "6", type: PressType.Number }} buttonClick={buttonPress} />
-            <CalculatorButton displayText="*" press={{ value: " * ", type: PressType.Operation }} buttonClick={buttonPress} />
-            <CalculatorButton displayText="/" press={{ value: " / ", type: PressType.Operation }} buttonClick={buttonPress} />
+            <CalculatorButton displayText="*" press={{ value: " * ", type: PressType.Operation }} buttonClick={buttonPress} variant="operator" />
+            <CalculatorButton displayText="/" press={{ value: " / ", type: PressType.Operation }} buttonClick={buttonPress} variant="operator" />
  
             {/* Row 4 */}
             <CalculatorButton displayText="1" press={{ value: "1", type: PressType.Number }} buttonClick={buttonPress} />
             <CalculatorButton displayText="2" press={{ value: "2", type: PressType.Number }} buttonClick={buttonPress} />
             <CalculatorButton displayText="3" press={{ value: "3", type: PressType.Number }} buttonClick={buttonPress} />
-            <CalculatorButton displayText="^" press={{ value: "^", type: PressType.Operation }} buttonClick={buttonPress} />
-            <CalculatorButton displayText="sqrt" press={{ value: "sqrt(", type: PressType.Operation }} buttonClick={buttonPress} />
+            <CalculatorButton displayText="^" press={{ value: "^", type: PressType.Operation }} buttonClick={buttonPress} variant="operator" />
+            <CalculatorButton displayText={<SquareRootIcon />} ariaLabel="Square root" press={{ value: "sqrt(", type: PressType.Operation }} buttonClick={buttonPress} variant="operator" />
  
             {/* Row 5 */}
             <CalculatorButton displayText="." press={{ value: ".", type: PressType.DecimalDot }} buttonClick={buttonPress} />
             <CalculatorButton displayText="0" press={{ value: "0", type: PressType.Number }} buttonClick={buttonPress} />
-            <CalculatorButton displayText="%" press={{ value: " % ", type: PressType.Operation }} buttonClick={buttonPress} />
-            <CalculatorButton displayText="=" press={{ value: "=", type: PressType.None }} buttonClick={() => {evaluate()}} classNames="col-span-2" />
+            <CalculatorButton displayText="%" press={{ value: " % ", type: PressType.Operation }} buttonClick={buttonPress} variant="operator" />
+            <CalculatorButton displayText="=" press={{ value: "=", type: PressType.None }} buttonClick={() => {evaluate()}} classNames="col-span-2" variant="equals" />
         </div>
     );
 }
