@@ -7,7 +7,7 @@ import { DeleteIcon, SquareRootIcon } from "./icons";
 import { calculatorConfig } from "@/config/calculator";
 import { evaluateExpression } from "@/lib/calculatorApi";
 
-enum PressType {
+export enum PressType {
     Number,
     Operation,
     OpenParenthesis,
@@ -20,9 +20,9 @@ enum PressType {
 
 export type Press = { value: string, type: PressType };
 
-function applyPress(stack: Press[], press: Press): Press[] {
+export function applyPress(stack: Press[], press: Press): Press[] {
     const lastPress = stack[stack.length - 1];
-    const multiply: Press = { value: "*", type: PressType.Operation };
+    const multiply: Press = { value: " * ", type: PressType.Operation };
 
     if (lastPress?.type == PressType.Result) {
         if (press.type == PressType.Operation && press.value != "sqrt(") {
@@ -160,7 +160,7 @@ function applyPress(stack: Press[], press: Press): Press[] {
     }
 }
 
-function validateExpression(stack: Press[]): boolean {
+export function validateExpression(stack: Press[]): boolean {
     if (stack.length == 0) {
         return false;
     }
