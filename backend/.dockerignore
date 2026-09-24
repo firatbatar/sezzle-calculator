@@ -1,0 +1,16 @@
+.git
+.gitignore
+.dockerignore
+Dockerfile
+Makefile
+*.md
+
+# Build output and coverage
+bin/
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Tests
+**/*_test.go

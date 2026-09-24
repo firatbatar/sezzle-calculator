@@ -1,0 +1,25 @@
+.git
+.gitignore
+.dockerignore
+Dockerfile
+*.md
+
+# Dependencies and build output
+node_modules
+.next
+out
+build
+*.tsbuildinfo
+next-env.d.ts
+
+# Tests and coverage
+coverage
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+vitest.config.mts
+vitest.setup.ts
+
+# Local env files
+.env
+.env.*
