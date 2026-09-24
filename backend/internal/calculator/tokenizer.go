@@ -20,6 +20,9 @@ const (
 	tSqrt
 	tLParen
 	tRParen
+	// Evaluator only
+	tUnaryPlus
+	tUnaryMinus
 )
 
 type token struct {
