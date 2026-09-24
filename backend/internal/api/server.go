@@ -7,22 +7,27 @@ import (
 )
 
 type Server struct {
-	log *log.Logger
-	mux *http.ServeMux
+	log            *log.Logger
+	handler        http.Handler
+	allowedOrigins string
 }
 
-func NewServer(logger *log.Logger) *Server {
+func NewServer(logger *log.Logger, allowedOrigins string) *Server {
 	s := &Server{
-		log: logger,
-		mux: http.NewServeMux(),
+		log:            logger,
+		allowedOrigins: allowedOrigins,
 	}
-	s.mux.HandleFunc("GET /healthz", s.handleHealth)
-	s.mux.HandleFunc("POST /evaluate", s.handleEvaluate)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", s.handleHealth)
+	mux.HandleFunc("POST /evaluate", s.handleEvaluate)
+
+	s.handler = s.logging(s.cors(mux))
 	return s
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.mux.ServeHTTP(w, r)
+	s.handler.ServeHTTP(w, r)
 }
 
 func (s *Server) writeJSON(w http.ResponseWriter, status int, v any) {

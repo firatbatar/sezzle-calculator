@@ -14,8 +14,13 @@ func main() {
 		port = "8000"
 	}
 
+	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "http://localhost:3000"
+	}
+
 	logger := log.New(os.Stdout, "", log.LstdFlags|log.Lmsgprefix)
-	srv := api.NewServer(logger)
+	srv := api.NewServer(logger, allowedOrigins)
 
 	addr := ":" + port
 	logger.Printf("listening on %s", addr)
