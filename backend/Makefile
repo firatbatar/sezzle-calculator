@@ -3,7 +3,7 @@ BUILD_DIR := bin
 CMD := ./cmd/server
 PORT ?= 8000
 
-TESTFLAGS := ${if ${V},-v,} -count=1
+TESTFLAGS := ${if ${V},-v,} ${if ${COVER}, -cover,} -count=1
 
 .PHONY: run build test cover cover-html check clean
 
