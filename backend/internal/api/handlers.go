@@ -19,6 +19,13 @@ func (s *Server) handleEvaluate(w http.ResponseWriter, r *http.Request) {
 
 	var req evaluateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		// A body over the limit can only get there through a long expression, so
+		// answer the same way the tokeniser does rather than calling it bad JSON.
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			s.writeJSON(w, http.StatusRequestEntityTooLarge, failure(calculator.ErrExpressionTooLong.Error()))
+			return
+		}
 		s.writeJSON(w, http.StatusBadRequest, failure("request body is not valid JSON"))
 		return
 	}

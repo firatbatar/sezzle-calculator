@@ -7,15 +7,15 @@ import (
 )
 
 type Server struct {
-	log            *log.Logger
-	handler        http.Handler
-	allowedOrigins string
+	log           *log.Logger
+	handler       http.Handler
+	allowedOrigin string
 }
 
-func NewServer(logger *log.Logger, allowedOrigins string) *Server {
+func NewServer(logger *log.Logger, allowedOrigin string) *Server {
 	s := &Server{
-		log:            logger,
-		allowedOrigins: allowedOrigins,
+		log:           logger,
+		allowedOrigin: allowedOrigin,
 	}
 
 	mux := http.NewServeMux()
