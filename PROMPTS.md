@@ -2,7 +2,8 @@
 
 A record of the prompts used to build this project with an AI assistant, in the order they were given, so the work can be traced and reproduced.
 
-## Prompt for the error/warning animation on the calculator screen
+## Frontend
+### Prompt for the error/warning animation on the calculator screen
 ```md
 I have two React components:
 
@@ -55,7 +56,7 @@ export default function CalculatorBody() {
 The invalid branch of the `evaluate` function (triggered by the "=" button) should run an animation that turns the screen text red and shakes it.
 ```
 
-## Prompt for the completion of the styling of the UI
+### Prompt for the completion of the styling of the UI
 ```md
 You're working on the frontend of a calculator app (Next.js, TypeScript, Tailwind CSS). The functionality is complete and tested. Your task is styling only.
 
@@ -82,7 +83,7 @@ Before finishing:
 - Give a brief summary of the files you changed and the design choices you made.
 ```
 
-## Prompts for the testing suite
+### Prompts for the testing suite
 ```md
 Add a unit test suite with a coverage report for this Next.js + TypeScript calculator frontend. The functionality is complete and correct — do not change behaviour to make a test pass. If you find a genuine bug, report it to me instead of fixing it.
 
@@ -159,4 +160,54 @@ Timer cleanup
 - After a resolved call, assert vi.getTimerCount() is 0, proving the finally block clears the timeout and the timer does not leak.
 
 Then run the full suite and the coverage report. Report the figures for calculatorApi.ts, any branch you could not reach, and a summary of the behaviour change you made.
+```
+
+## Backend
+### Testing the tokenizer
+```md
+Write table-driven unit tests for the tokenizer in internal/calculator/tokenizer.go.
+
+Read the implementation first. Do not change it — if you find a bug, tell me rather than fixing it.
+
+Use the standard testing package only, no testify. Put them in internal/calculator/lexer_test.go as package calculator, so unexported identifiers are reachable. Two functions: one for successful tokenisation asserting the exact []token with reflect.DeepEqual, one for errors asserting with errors.Is. Each case is a struct in a slice with a short descriptive name, run via t.Run. Use %q when printing the input so whitespace cases are legible.
+
+Cover:
+- Integers, decimals, and numbers normalised from a leading or trailing decimal point
+- Whitespace of every accepted kind being discarded, including between digits and operators
+- Every operator and parenthesis mapping to the right token type
+- "sqrt(" producing a single token that consumes the parenthesis, so sqrt(9) is three tokens not four
+- A negated number inside parentheses
+- Errors: empty input, whitespace-only input, an unknown character, a letter sequence, a multi-byte character, "sqrt" not followed by a parenthesis, two decimal points in one number, a lone decimal point, and input over maxExpressionLength
+
+Derive the length case from the maxExpressionLength constant rather than hardcoding a number. Then run the tests and report anything that fails.
+```
+
+### Testing the evaluator
+```md
+Write table-driven unit tests for Evaluate in internal/calculator/eval.go.
+
+Read the implementation and the grammar it encodes first. Do not change it — if you find a bug, tell me rather than fixing it.
+
+Use the standard testing package only, no testify. Put them in internal/calculator/eval_test.go as package calculator. Two functions: one for valid expressions asserting the numeric result, one for errors asserting with errors.Is. Each case is a struct with a short descriptive name and the expression as a string, run via t.Run. Group the cases with comments by the behaviour they cover.
+
+Compare results with a small closeEnough helper using a relative tolerance, not ==, since division and roots make exact comparison unreliable.
+
+Cover valid expressions for:
+- The four basic operations, a bare number, and a parenthesised number
+- Precedence, including parentheses overriding it
+- Left associativity of subtraction, division and %, and right associativity of ^
+- Unary minus and plus: leading, after a binary operator, before a group, doubled, and interacting with ^ in both directions, so that -2^2 is -4 and 2^-2 is 0.25
+- sqrt of a literal, of zero, of an expression, nested, negated, and used as an exponent base
+- % meaning "Y percent of X", so 100 % 30 is 30 and 10 + 100 % 30 is 40, plus its precedence relative to * and +
+- Whitespace, deep nesting, and numbers with a leading or trailing decimal point
+
+Cover errors for:
+- Division by zero, both literal and from an expression
+- Square root of a negative, both literal and from an expression
+- Results that are not finite: 0 ^ -1 and an overflow
+- Malformed input: trailing operator, lone operator, lone sign, two binary operators in a row, adjacent operands, an operand next to a group, an empty group, an empty sqrt
+- Unbalanced parentheses, opened and unopened, partially closed, and an unclosed sqrt
+- Lexical errors propagating through: empty input, unknown character, two decimal points, over-length input
+
+Then run the tests with coverage and report the figure plus anything that fails.
 ```
