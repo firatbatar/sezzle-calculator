@@ -162,6 +162,42 @@ Timer cleanup
 Then run the full suite and the coverage report. Report the figures for calculatorApi.ts, any branch you could not reach, and a summary of the behaviour change you made.
 ```
 
+### README
+Write the README for this repository. It is a monorepo containing a Next.js/TypeScript calculator frontend and a Go backend. The frontend is complete; the backend is not written yet.
+
+Your job this pass: produce the complete README structure covering both services, fill in every frontend and repo-level section fully, and leave clearly marked TODO placeholders for the backend sections. Do not invent anything about the backend beyond what the repo already shows.
+
+This README is a graded deliverable for a take-home assignment. It must explicitly satisfy these requirements: setup instructions, how to run the frontend and backend, examples of API calls, and design decisions or assumptions. It should also present the unit tests and coverage report.
+
+Ground rules — accuracy above all:
+- Read package.json, the Vitest config, the Next.js config, the calculator config module and the API client before writing anything. Every command, script name, port and environment variable you state must match what is actually in the repo.
+- Run the test suite with coverage yourself and paste the real table. Do not fabricate or round figures.
+- If you cannot verify a claim from the code, mark it TODO rather than guessing.
+
+Structure:
+
+1. Title and a two or three sentence summary of what the project is and how the two services relate.
+2. Repository layout — a short tree showing the top-level directories and what each holds.
+3. Prerequisites — actual Node and Go versions, derived from package.json engines, .nvmrc or go.mod where present.
+4. Quick start — the shortest path to a running system. If a docker-compose file exists use that; otherwise state it as TODO and give the manual path.
+5. Running the frontend — install, dev server, production build, the port, and any environment variables with their defaults and an example .env.local.
+6. Running the backend — TODO placeholder with the section headings in place.
+7. API reference — TODO placeholder. Note in one line that the frontend calls a single evaluate endpoint, and state the request and response shapes the client currently expects, since that is verifiable from the API client and is the contract the backend must meet.
+8. Testing — how to run the suite, how to run it with coverage, where the HTML report lands. Paste the real coverage table in a fenced block. Add a short paragraph on testing strategy: what is unit tested directly, what is tested through the rendered component, why the Next.js App Router shell is excluded from coverage, and what is deliberately left to be covered by backend tests.
+9. Design decisions and assumptions — frontend only in this pass. Cover, drawing from the actual code:
+   - Why Next.js was chosen when the brief specified React.
+   - Why expression evaluation lives in the backend rather than the frontend, and what the frontend validation is therefore for: immediate feedback, not authority. Note that the backend re-validates because the API can be called directly.
+   - The input model: presses are held as a typed stack rather than a raw string, which is what makes validation and deletion tractable.
+   - The specific input rules a reviewer would otherwise have to infer — implicit multiplication after a closing parenthesis or before an opening one, initial and lone zero replacement, one decimal point per number, operators not being replaceable after one another, square root opening a parenthesis, and how a result carries into a new expression with a negative result wrapped in parentheses.
+   - Error and timeout handling in the API client, including the request timeout and the fact that a malformed success body is treated as an error rather than displayed.
+   - The single in-flight request guard.
+   - Accessibility and responsiveness choices that are actually present in the code, such as aria-labels on the icon buttons and reduced-motion handling.
+10. A link to PROMPTS.md for the AI prompts used, with a one-line note. Create PROMPTS.md as a stub with a heading and a short explanatory sentence if it does not exist.
+
+Style: British English. Semi-formal and direct. Use fenced code blocks with language tags for every command. No marketing language, no emoji, no badges. Keep each section as short as it can be while still being complete — a reviewer should be able to clone and run within a minute of opening the file.
+
+When done, list the TODO placeholders you left and anything you could not verify from the code.
+
 ## Backend
 ### Testing the tokenizer
 ```md
@@ -260,3 +296,39 @@ Style:
 - No catch-all "/" route: it would match every path and swallow the mux's automatic 405 handling.
 
 Then run go build ./..., go vet ./... and gofmt -l ., start the server, and verify with curl that "2 + 3 * 4" returns 20, "1/0" returns 422, a malformed body returns 400, and GET /evaluate returns 405.
+
+### Update README
+Fill in the backend sections of the README. The frontend sections are already written; match their tone, depth and heading style, and do not rewrite them. The backend is complete: Go standard library only, no third-party dependencies.
+
+This README is a graded deliverable for a take-home assignment. It must explicitly satisfy: setup instructions, how to run the frontend and backend, examples of API calls, and design decisions or assumptions. Docker is not done yet — leave the existing Docker placeholders alone.
+
+Ground rules — accuracy above all:
+- Read backend/go.mod, the Makefile, cmd/server/main.go, internal/api/*.go and internal/calculator/*.go before writing anything. Every command, target name, port, environment variable, endpoint path, status code and error message you state must match what is actually in the code.
+- Run the tests with coverage yourself and paste the real figures. Do not fabricate or round them.
+- Where the frontend README already states something that the backend contradicts, tell me rather than silently picking one.
+
+Sections to fill in:
+
+1. Prerequisites — add the Go version, taken from the go directive in go.mod.
+
+2. Running the backend — the Makefile targets first, since that is the intended entry point, with the equivalent raw go commands underneath for anyone who would rather not use make. Include: run, build, test, coverage, format and vet, using the actual target names from the Makefile. State the default port and the ALLOWED_ORIGIN variable with its default, and note that both are read from the environment.
+
+3. API reference — replace the placeholder. Document both endpoints with method, path, request body shape and response body shape. Explain that the response envelope is the same for success and failure, with exactly one of value and msg non-null, and that msg is written to be shown directly to an end user. Give runnable curl examples: a successful evaluation, a division by zero, a syntax error, and the health check. Show the real response bodies — run the commands against a locally running server and paste what comes back. Then a status code table with one row per condition, taken from getHttpStatusFromErr and the handler, including the 413 from the expression length limit and the 400 from a body that exceeds the reader limit.
+
+4. Testing — extend the existing section rather than starting a new one. Add how to run the Go tests and the coverage report via both make and raw go, where the profile lands, and how to open the HTML view. Paste the real go tool cover -func summary in a fenced block alongside the frontend's Vitest table. Add a short paragraph on backend testing strategy: the tokeniser and evaluator are tested as pure functions with table-driven tests; the HTTP layer is tested through Server.ServeHTTP with httptest so routing, middleware and error mapping are exercised together; and name what is deliberately left uncovered, such as main and the marshalling-failure branch in writeJSON, with a sentence on why chasing those is not worthwhile.
+
+5. Design decisions — add the backend subsections. Cover, drawing from the actual code:
+   - Standard library only, no framework and no dependencies. net/http with the Go 1.22+ ServeMux, where the method is part of the route pattern, which gives correct 405 handling without extra code.
+   - Package layout: cmd/server for wiring, internal/calculator for the domain, internal/api for HTTP. internal/ is compiler-enforced, and calculator has no knowledge of HTTP.
+   - Sentinel errors in the calculator package, matched with errors.Is in the api package, as the mechanism that keeps transport concerns out of the domain while still producing accurate status codes.
+   - The evaluation approach: a single-pass stack evaluator with an operator stack and a number stack, rather than building an AST. Say why — it is one pass, it needs no tree allocation, and precedence and associativity fall out of the push/reduce rules. Explain how the isExpectingOperator flag distinguishes unary from binary plus and minus, and how sqrt is handled as an opening bracket that reduces on close.
+   - Operator semantics and assumptions a reviewer would otherwise have to infer: exponentiation is right-associative, unary minus binds tighter than multiplication but looser than exponentiation, percent is a binary operator computing left * right / 100, and sqrt requires its parenthesis. State each one explicitly as a decision.
+   - Numeric behaviour: float64 throughout, with the consequence that 0.1 + 0.2 is not exactly 0.3. Say why float64 was chosen anyway and what the alternative would have been. Note that NaN and infinite results are rejected rather than returned.
+   - Input bounds: the 256-character expression limit in the tokeniser and the 4 KiB body limit via MaxBytesReader, and that these are the deliberate substitute for rate limiting.
+   - Middleware: CORS and request logging only, with the justification we agreed — the service is stateless, single-endpoint, holds no user data and is not publicly deployed, so rate limiting, auth, request IDs and tracing would add configuration without protecting anything; per-IP rate limiting via golang.org/x/time/rate would be the first addition if it were deployed publicly.
+   - The ReadHeaderTimeout on the http.Server, and that graceful shutdown was left out as unnecessary for a stateless service.
+   - That validation happens on both sides: the frontend validates for immediate feedback, the backend re-validates because the API can be called directly, and the backend is the authority.
+
+Style: British English. Semi-formal and direct. Fenced code blocks with language tags for every command and every JSON body. No marketing language, no emoji, no badges. Keep each section as short as it can be while still being complete.
+
+When done, list anything you could not verify from the code, and any place where the README and the implementation disagreed.
