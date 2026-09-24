@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/firatbatar/sezzle-calculator/backend/internal/api"
 )
 
 func main() {
@@ -12,16 +14,12 @@ func main() {
 		port = "8000"
 	}
 
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"ok"}`))
-	})
+	logger := log.New(os.Stdout, "", log.LstdFlags|log.Lmsgprefix)
+	srv := api.NewServer(logger)
 
 	addr := ":" + port
-	log.Printf("listening on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatalf("Server error %v", err)
+	logger.Printf("listening on %s", addr)
+	if err := http.ListenAndServe(addr, srv); err != nil {
+		logger.Fatalf("server error: %v", err)
 	}
 }

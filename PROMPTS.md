@@ -211,3 +211,52 @@ Cover errors for:
 
 Then run the tests with coverage and report the figure plus anything that fails.
 ```
+
+### Http Handler
+Write the HTTP layer for this Go calculator backend. The module is github.com/firatbatar/sezzle-calculator/backend. The calculator package is complete — do not modify it, and do not add any dependency outside the standard library.
+
+What already exists:
+- internal/calculator exposes Evaluate(input string) (float64, error) and the sentinel errors ErrEmptyExpression, ErrInvalidCharacter, ErrInvalidSyntax, ErrUnbalancedParens, ErrExpressionTooLong, ErrDivisionByZero, ErrNegativeRoot, ErrResultNotFinite.
+- internal/api/types.go defines the unexported evaluateRequest and evaluateResponse structs and the helpers success(float64) and failure(string). Read it; use those helpers rather than building responses by hand.
+
+Create three files.
+
+1. internal/api/server.go
+
+A Server struct with exactly two unexported fields: a *log.Logger and an *http.ServeMux. Nothing else.
+
+NewServer(logger *log.Logger) *Server builds the struct, registers the routes inline in the constructor (no separate routes method), and returns it. Routes, using Go 1.22 method-in-pattern syntax: "GET /healthz" and "POST /evaluate". Note there is no /api/v1 prefix — the path is exactly /evaluate.
+
+Give Server an unexported writeJSON(w http.ResponseWriter, status int, v any) method. It must marshal to a byte slice with json.Marshal first, not stream with json.NewEncoder, so a marshalling failure can still be turned into a 500 before anything is committed to the response. On marshalling failure: log it, set the content type, write 500, and write a hardcoded JSON literal matching the response shape. On success: set the content type, write the status, write the body, and log any write error. Keep the header/status/body ordering correct in both paths.
+
+2. internal/api/handlers.go
+
+A maxBodyBytes constant of 4 << 10.
+
+handleHealth: respond 200 with a map[string]string of status ok, via writeJSON.
+
+handleEvaluate:
+- Wrap r.Body in http.MaxBytesReader with the cap.
+- Decode into an evaluateRequest. On decode failure respond 400 with failure("request body is not valid JSON").
+- Call calculator.Evaluate. On error, get the status from a helper; if that status is 500, log the expression and the error and respond with a generic "internal server error" message, otherwise respond with err.Error() as the message. On success respond 200 with success(result).
+- Return after every write. No else branches.
+
+getHttpStatusFromErr(err error) int — an expressionless switch using errors.Is, with these four groups in this order:
+- ErrEmptyExpression, ErrInvalidCharacter, ErrInvalidSyntax, ErrUnbalancedParens -> 400
+- ErrExpressionTooLong -> 413
+- ErrDivisionByZero, ErrNegativeRoot, ErrResultNotFinite -> 422
+- default -> 500
+Use the http.Status* constants, never integer literals.
+
+3. cmd/server/main.go
+
+Read PORT from the environment, defaulting to 8000. Build a *log.Logger writing to os.Stdout with flags log.LstdFlags|log.Lmsgprefix. Construct the server, log the listen address, and call http.ListenAndServe with the server as the handler, calling logger.Fatalf if it returns. main does configuration and wiring only — no logic.
+
+Style:
+- Idiomatic Go. gofmt clean, go vet clean.
+- Standard library imports in their own group, the module import in a second group.
+- Keep it terse. Comment only where the reason is not obvious from the code — the writeJSON ordering and the maxBodyBytes rationale are worth a line each; nothing else needs one.
+- No middleware, no CORS, no timeouts, no graceful shutdown. Those come later.
+- No catch-all "/" route: it would match every path and swallow the mux's automatic 405 handling.
+
+Then run go build ./..., go vet ./... and gofmt -l ., start the server, and verify with curl that "2 + 3 * 4" returns 20, "1/0" returns 422, a malformed body returns 400, and GET /evaluate returns 405.
