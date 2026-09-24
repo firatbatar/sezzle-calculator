@@ -332,3 +332,91 @@ Sections to fill in:
 Style: British English. Semi-formal and direct. Fenced code blocks with language tags for every command and every JSON body. No marketing language, no emoji, no badges. Keep each section as short as it can be while still being complete.
 
 When done, list anything you could not verify from the code, and any place where the README and the implementation disagreed.
+
+## Finalization
+### Docker
+```md
+Containerise this monorepo so the frontend and backend can be brought up together with one command. The application code is complete — do not change application logic. The only source change permitted is enabling standalone output in the Next.js config, described below. Do not touch the README; that is a separate task.
+
+Deliverables: backend/Dockerfile, backend/.dockerignore, frontend/Dockerfile, frontend/.dockerignore, and docker-compose.yml at the repository root.
+
+Read go.mod, package.json and the Makefile first. Pin every base image to a specific version matching what the project actually targets — do not use latest, and do not guess the Go or Node major version.
+
+Backend image:
+- Multi-stage. Builder from the golang image matching the go directive in go.mod; runtime from alpine.
+- Build a static binary with CGO_ENABLED=0 and -ldflags="-s -w" to strip debug info. The project has no third-party dependencies, so the module download step is trivial, but still copy go.mod before the source so the layer caches.
+- Run as a non-root user in the runtime stage.
+- Use alpine rather than distroless for the runtime specifically so wget is available for the compose healthcheck. Add a comment saying that, and noting distroless would be marginally smaller but leaves no way to health-check without shipping a second binary.
+- EXPOSE the port the server actually defaults to.
+
+Frontend image:
+- Add output: "standalone" to next.config.ts. This is the one permitted source change; it makes Next trace the dependencies actually used and emit a self-contained server, instead of the image carrying the whole node_modules tree.
+- Three stages: deps (npm ci from package.json and package-lock.json only, so a source edit does not invalidate it), builder, runner.
+- Take NEXT_PUBLIC_API_URL as a build ARG, defaulting to http://localhost:8000, and promote it to ENV before npm run build. Add a comment explaining that NEXT_PUBLIC_ variables are inlined into the client bundle at build time, so this cannot be supplied at runtime, and that the value must be reachable from the user's browser rather than from inside the Docker network. Check the actual variable name used in the frontend config module rather than assuming this one.
+- Runner stage: copy .next/standalone to the working directory root, then .next/static to ./.next/static — inside the unpacked .next, not beside it — and public to ./public if that directory exists. Set NODE_ENV=production, NEXT_TELEMETRY_DISABLED=1, HOSTNAME=0.0.0.0 and the port. Start with node server.js, not npm start.
+- Create and run as a non-root user, with the copied files owned by it.
+
+.dockerignore files: exclude node_modules, .next, coverage, .git, test files, Dockerfile itself, and any local env files. These matter — without them the build context includes the whole node_modules tree and the layer cache is useless.
+
+docker-compose.yml:
+- Two services, backend and frontend, on a shared network, with host ports 8000 and 3000 mapped.
+- Backend environment: PORT, and ALLOWED_ORIGIN set to http://localhost:3000 so CORS matches the origin the browser actually uses.
+- Backend healthcheck hitting /healthz with wget, with sensible interval, timeout and retries.
+- Frontend build args carrying the API URL, and depends_on the backend with condition: service_healthy.
+- No version key at the top — it has been obsolete for some time and Compose warns about it.
+- restart: unless-stopped on both.
+
+Then verify it actually works, do not just assume:
+- docker compose build, then docker compose up -d.
+- curl the backend health endpoint and an evaluate call from the host.
+- curl the frontend root and confirm it returns HTML with a 200.
+- Report the final image sizes from docker images.
+- docker compose down when finished.
+
+Report: the image sizes, anything you had to change from the plan above and why, and anything you could not verify.
+```
+
+### README
+```md
+Two passes over the README, in order. Do not start the second until the first is complete.
+
+PASS 1 — Add the Docker information
+
+Read docker-compose.yml, both Dockerfiles, both .dockerignore files and next.config.ts before writing. Every command, service name, port, environment variable and build argument you state must match what is actually in those files.
+
+Replace the existing Docker placeholders with:
+- Docker as the primary quick start: prerequisites (Docker with the Compose plugin), docker compose up --build, the two URLs to open, and docker compose down to stop. This becomes the shortest path to a running system, ahead of the manual instructions.
+- A short note that NEXT_PUBLIC_API_URL is a build argument rather than a runtime variable, because Next.js inlines NEXT_PUBLIC_ values into the client bundle at build time, and that its value must be reachable from the user's browser rather than from inside the Docker network. Say what to change if the backend is exposed on a different host or port, and that the frontend image must be rebuilt for that change to take effect.
+- One short design-decisions paragraph on the container setup: multi-stage builds for both services, Next.js standalone output so the runtime image carries only traced dependencies, static Go binary with CGO disabled, non-root users in both runtime images, alpine rather than distroless for the backend so the compose healthcheck has a shell utility available, and the healthcheck gating the frontend's start. Include the final image sizes.
+
+Keep the manual, non-Docker instructions for both services. A reviewer may well run them that way.
+
+PASS 2 — Reduce the whole README
+
+The document has grown across several passes and is now longer than the assignment it documents. Cut it down hard. Target 200 lines or fewer, and prioritise a reviewer being able to find any of the four required items in under ten seconds.
+
+These must survive, because they are explicitly graded:
+1. Setup instructions
+2. How to run the frontend and backend
+3. Examples of API calls, with real request and response bodies
+4. Design decisions and assumptions
+5. How to run the tests and the coverage report, with the real figures
+6. The link to PROMPTS.md
+
+How to cut:
+- Collapse repetition. If a command appears in both a quick-start and a detailed section, keep it once.
+- Prefer tables to prose for anything enumerable: status codes, environment variables, Make targets, project layout.
+- Design decisions: keep every decision, drop the justification down to one sentence each, and group them into four short subsections — architecture, evaluation approach, operator and numeric semantics, operational choices. Do not turn them into one-line bullets; short paragraphs read as reasoning, bullets read as a checklist.
+- API examples: keep four curl examples at most — a success, a division by zero, a syntax error, and the health check. Keep the full status code table; cut any prose that restates it.
+- Coverage: keep the two real figure blocks and one short paragraph on strategy. Cut any per-file commentary.
+- Delete entirely: any section explaining what React, Go, Docker or REST are; any "future improvements" or "what I would do with more time" section unless it is three lines or fewer; any restating of the assignment brief; any duplicated prerequisites.
+
+Do not cut by deleting whole required sections or by replacing content with links to the code. The test is that everything graded is still there, said once and said briefly.
+
+Rules for both passes:
+- British English. Semi-formal and direct. No marketing language, no emoji, no badges.
+- Do not invent or adjust any figure, command or output. If a claim cannot be verified from the repository, remove it rather than rewriting it.
+- Fenced code blocks with language tags throughout.
+
+When finished, report the line count before and after, and confirm each of the six required items above by naming the section it now lives in.
+```
