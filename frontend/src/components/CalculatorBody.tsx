@@ -80,9 +80,24 @@ export function applyPress(stack: Press[], press: Press): Press[] {
                 return [...stack, press];
             }
  
+            const sign = press.value.trim();
+            const isSign = sign == "+" || sign == "-";
+            const lastSign = lastPress?.value.trim();
+
+            if (lastPress && isSign && (lastSign == "+" || lastSign == "-")) {
+                // Replace a binary or unary sign, keeping its spacing: "5 + " + "-" -> "5 - ", "(-" + "+" -> "(+"
+                return [...stack.slice(0, -1), { value: lastPress.value.replace(lastSign, sign), type: PressType.Operation }];
+            }
+
+            if (lastPress?.type == PressType.InitialZero && sign == "-") {
+                // Replace the initial zero with a sign: "0" + "-" -> "-"
+                return [{ value: sign, type: PressType.Operation }];
+            }
+
             if (lastPress === undefined || lastPress.type == PressType.Operation || lastPress.type == PressType.OpenParenthesis) {
-                // Ignore at the empty, after another operation (including "sqrt(") or after "("
-                return stack;
+                // At the empty, after another operation (including "sqrt(") or after "(", add + or - as a sign
+                // and ignore the rest: "5 * " + "-" -> "5 * -", "(" + "-" -> "(-"
+                return isSign ? [...stack, { value: sign, type: PressType.Operation }] : stack;
             }
  
             // Add the operation

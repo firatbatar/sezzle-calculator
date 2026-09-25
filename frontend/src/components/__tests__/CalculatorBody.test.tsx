@@ -174,6 +174,19 @@ describe("CalculatorBody", () => {
             expect(displayed()).toBe("");
         });
 
+        it("removes a sign as one press", async () => {
+            render(<CalculatorBody />);
+
+            await press("5", "*", "-", "3");
+            expect(displayed()).toBe("5 * -3");
+
+            await press("Delete");
+            expect(displayed()).toBe("5 * -");
+
+            await press("Delete");
+            expect(displayed()).toBe("5 * ");
+        });
+
         it("resets to 0 when deleting a result", async () => {
             evaluateExpressionMock.mockResolvedValue({ ok: true, value: "15" });
             render(<CalculatorBody />);

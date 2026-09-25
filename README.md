@@ -92,28 +92,28 @@ curl -s http://localhost:8000/healthz      # 200
 | Tests | `pnpm test`, or `pnpm test:watch` to watch | `make test`, `make test V=1` for verbose, or `go test -count=1 ./...` |
 | Coverage | `pnpm test:coverage`, with HTML in `frontend/coverage/index.html` | `make cover`; `make cover-html` writes `backend/coverage.html`; `make test COVER=1` or `go test -count=1 -cover ./...` per package |
 
-Frontend: 56 tests across three files, 26 for the input rules, 9 driving the rendered calculator and 21 for the API client.
+Frontend: 63 tests across three files, 32 for the input rules, 10 driving the rendered calculator and 21 for the API client.
 
 ```text
  Test Files  3 passed (3)
-      Tests  56 passed (56)
+      Tests  63 passed (63)
 
  % Coverage report from v8
 -------------------|---------|----------|---------|---------|-------------------
 File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
 -------------------|---------|----------|---------|---------|-------------------
-All files          |   99.45 |    91.78 |      96 |    99.4 |
- components        |   99.35 |     91.3 |   95.45 |   99.29 |
+All files          |   99.47 |     92.5 |      96 |   99.42 |
+ components        |   99.38 |    92.24 |   95.45 |   99.32 |
   ...torScreen.tsx |      50 |        0 |       0 |      50 | 13
  config            |     100 |       75 |     100 |     100 |
   calculator.ts    |     100 |       75 |     100 |     100 | 3
 -------------------|---------|----------|---------|---------|-------------------
 
 =============================== Coverage summary ===============================
-Statements   : 99.45% ( 181/182 )
-Branches     : 91.78% ( 134/146 )
+Statements   : 99.47% ( 188/189 )
+Branches     : 92.5% ( 148/160 )
 Functions    : 96% ( 24/25 )
-Lines        : 99.4% ( 166/167 )
+Lines        : 99.42% ( 173/174 )
 ================================================================================
 ```
 
@@ -170,7 +170,9 @@ Pure logic is tested directly: the frontend's `applyPress` and `validateExpressi
 
 ### Evaluation approach
 
-**Input is a typed stack of presses.** The frontend holds `Press[]`, each a `value` and a `PressType`, and shows their concatenation, so delete removes a whole unit such as `sqrt(` or `" + "` and each rule can ask what kind of press came before. Under the rules in `applyPress`, implicit multiplication is inserted as `" * "` next to parentheses (`(2)` then `3` gives `(2) * 3`); the initial `0` is replaced by the first digit, `(` or `sqrt(`, and a lone `.` becomes `0.`; a lone zero is replaced rather than appended, so `5 + 0` then `7` gives `5 + 7`; a number takes one decimal point; an operator after another operator, after `(` or on an empty expression is ignored rather than substituted; and `)` is ignored when nothing is open or directly after `(` or an operator, so `()` cannot be produced. After a result, an operator continues from it, wrapping a negative (`-8` then `*` gives `(-8) * `), while a digit, `.`, `(` or `sqrt(` starts afresh.
+**Input is a typed stack of presses.** The frontend holds `Press[]`, each a `value` and a `PressType`, and shows their concatenation, so delete removes a whole unit such as `sqrt(` or `" + "` and each rule can ask what kind of press came before. Under the rules in `applyPress`, implicit multiplication is inserted as `" * "` next to parentheses (`(2)` then `3` gives `(2) * 3`); the initial `0` is replaced by the first digit, `(`, `sqrt(` or `-`, and a lone `.` becomes `0.`; a lone zero is replaced rather than appended, so `5 + 0` then `7` gives `5 + 7`; a number takes one decimal point; an operator other than `+` or `-` after another operator, after `(` or on an empty expression is ignored rather than substituted; and `)` is ignored when nothing is open or directly after `(` or an operator, so `()` cannot be produced. After a result, an operator continues from it, wrapping a negative (`-8` then `*` gives `(-8) * `), while a digit, `.`, `(` or `sqrt(` starts afresh.
+
+**`+` and `-` double as signs.** Where another operator would be ignored, after an operator, `(` or `sqrt(` or on an empty expression, `+` and `-` are entered as a sign with no spaces, so `5 * ` then `-` then `3` gives `5 * -3` and `(` then `-` gives `(-`; `-` on the initial `0` replaces it, while `+` there stays binary (`0 + `) because a leading plus changes nothing. A `+` or `-` pressed straight after another, binary or unary, replaces it and keeps its spacing, so `5 + ` then `-` gives `5 - ` and `(-` then `+` gives `(+`; signs never stack, so `5 - -3` is entered as `5 + 3`. A sign is a `PressType.Operation` press rather than a new type, so the existing rules hold for it unchanged: delete removes it whole, `)` straight after it is ignored, and an expression ending in one fails validation. The backend reads it as unary because it arrives where an operand is expected.
 
 **A two-stack evaluator rather than an AST.** One left-to-right pass over the tokens with an operator stack and a number stack reduces any stacked operator of higher or equal precedence before pushing (strictly higher for `^`, making it right-associative) and reduces back to the opener on `)`; each expression is evaluated once and discarded, so a tree would be built only to be walked once. A flag, `isExpectingOperator`, makes `+` or `-` unary where an operand is expected and rejects two operands or two binary operators in a row, and `sqrt(` is pushed like `(`, replacing the top number with its square root when its `)` arrives.
 

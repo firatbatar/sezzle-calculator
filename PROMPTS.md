@@ -198,6 +198,19 @@ Style: British English. Semi-formal and direct. Use fenced code blocks with lang
 
 When done, list the TODO placeholders you left and anything you could not verify from the code.
 
+### Fixing unary '+' and '-' problem
+In CalculatorBody.tsx, change applyPress to support unary + and -. Nothing else in the file should change unless strictly necessary, and the backend needs no change at all.
+
+Two new behaviours:
+
+1. Unary sign. When + or - is pressed where a binary operator is currently ignored — on an empty stack, after another operator, after "(" or after "sqrt(" — insert it as a sign instead. Use PressType.Operation with the value "-" or "+", with no surrounding spaces, so "5 * " + "-" + "3" displays as "5 * -3" and "(" + "-" + "3" as "(-3". Also apply this at the initial zero: pressing - on the starting "0" replaces it with "-". Do not introduce a new PressType.
+
+2. Sign toggle. When the last press is a + or - — binary or unary — pressing + or - replaces it rather than appending. So "5 + " + "-" gives "5 - ", and "3 + (-" + "+" gives "3 + (+". Detect this by trimming the last press's value and comparing to "+" or "-", which leaves "sqrt(" and the other operators alone. A replacement must preserve the spacing of what it replaces: a binary " + " is replaced by " - ", a unary "-" by "+".
+
+Everything else stays as it is: a sign is one press, so delete removes it whole; ")" straight after a sign is still ignored; a trailing sign still fails validateExpression.
+
+Then update the existing unit tests — add cases for both behaviours and fix any test the change invalidates — and update the README's input-rules and assumptions section to document unary signs and the toggle. Run the full suite with coverage and report the figures.
+
 ## Backend
 ### Testing the tokenizer
 ```md

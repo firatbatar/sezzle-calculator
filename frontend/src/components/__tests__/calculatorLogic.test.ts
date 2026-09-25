@@ -85,11 +85,17 @@ describe("applyPress", () => {
     });
 
     describe("initial zero", () => {
-        it("is replaced by a digit, (, sqrt( or .", () => {
+        it("is replaced by a digit, (, sqrt(, . or -", () => {
             expect(display(fold("7"))).toBe("7");
             expect(display(fold("("))).toBe("(");
             expect(display(fold("sqrt"))).toBe("sqrt(");
             expect(display(fold("."))).toBe("0.");
+            expect(display(fold("-"))).toBe("-");
+        });
+
+        it("is kept before + and the other binary operators", () => {
+            expect(display(fold("+"))).toBe("0 + ");
+            expect(display(fold("*"))).toBe("0 * ");
         });
     });
 
@@ -106,10 +112,10 @@ describe("applyPress", () => {
     });
 
     describe("rejected input", () => {
-        it("ignores an operator after another operator, after ( and on an empty stack", () => {
+        it("ignores an operator other than + or - after another operator, after ( and on an empty stack", () => {
             expect(display(fold("5", "+", "*"))).toBe("5 + ");
-            expect(display(fold("(", "+"))).toBe("(");
-            expect(display(foldFrom([], "+"))).toBe("");
+            expect(display(fold("(", "*"))).toBe("(");
+            expect(display(foldFrom([], "*"))).toBe("");
         });
 
         it("ignores ) when nothing is open", () => {
@@ -152,6 +158,45 @@ describe("applyPress", () => {
             expect(display(fold("sqrt", "sqrt", "9"))).toBe("sqrt(sqrt(9");
         });
     });
+
+    describe("unary sign", () => {
+        it("is inserted without spaces after an operator, (, sqrt( or on an empty stack", () => {
+            expect(display(fold("5", "*", "-", "3"))).toBe("5 * -3");
+            expect(display(fold("2", "^", "-", "3"))).toBe("2^-3");
+            expect(display(fold("(", "-", "3"))).toBe("(-3");
+            expect(display(fold("sqrt", "+"))).toBe("sqrt(+");
+            expect(display(foldFrom([], "-"))).toBe("-");
+            expect(display(foldFrom([], "+"))).toBe("+");
+        });
+
+        it("is followed like any operator", () => {
+            expect(display(fold("-", "("))).toBe("-(");
+            expect(display(fold("-", "sqrt"))).toBe("-sqrt(");
+            expect(display(fold("-", "."))).toBe("-0.");
+            expect(display(fold("5", "*", "-", "0", "7"))).toBe("5 * -7");
+        });
+
+        it("ignores ) and operators other than + or - after it", () => {
+            expect(display(fold("(", "-", ")"))).toBe("(-");
+            expect(display(fold("5", "*", "-", "/"))).toBe("5 * -");
+        });
+    });
+
+    describe("sign toggle", () => {
+        it("replaces a binary + or - with the pressed sign, keeping its spaces", () => {
+            expect(display(fold("5", "+", "-"))).toBe("5 - ");
+            expect(display(fold("5", "-", "+"))).toBe("5 + ");
+            expect(display(fold("5", "-", "-"))).toBe("5 - ");
+            expect(display(foldFrom(result("8"), "+", "-"))).toBe("8 - ");
+        });
+
+        it("replaces a unary sign with the pressed sign, without spaces", () => {
+            expect(display(fold("3", "+", "(", "-", "+"))).toBe("3 + (+");
+            expect(display(fold("5", "*", "-", "+", "2"))).toBe("5 * +2");
+            expect(display(fold("-", "+"))).toBe("+");
+            expect(display(fold("-", "-"))).toBe("-");
+        });
+    });
 });
 
 describe("validateExpression", () => {
@@ -173,6 +218,8 @@ describe("validateExpression", () => {
     it("rejects a trailing operator", () => {
         expect(validateExpression(fold("5", "+"))).toBe(false);
         expect(validateExpression(fold("5", "^"))).toBe(false);
+        expect(validateExpression(fold("5", "*", "-"))).toBe(false);
+        expect(validateExpression(fold("-"))).toBe(false);
     });
 
     it("accepts every valid trailing token", () => {
@@ -186,5 +233,6 @@ describe("validateExpression", () => {
     it("accepts a balanced nested expression", () => {
         expect(validateExpression(fold("(", "2", "+", "3", ")", "*", "4"))).toBe(true);
         expect(validateExpression(fold("sqrt", "1", "6", ")"))).toBe(true);
+        expect(validateExpression(fold("-", "(", "-", "3", ")"))).toBe(true);
     });
 });
